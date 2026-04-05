@@ -60,6 +60,99 @@ void SpawnBlood(Vector vecSpot, int bloodColor, float flDamage)
 	UTIL_BloodDrips(vecSpot, g_vecAttackDir, bloodColor, (int)flDamage);
 }
 
+#if defined(TRINITY)
+const char* DamageDecal(CBaseEntity* pEntity, int bitsDamageType, Vector vecSrc, Vector vecEnd)
+{
+	char chTextureType = 0;
+	const char* pTextureName = nullptr;
+
+	if (vecSrc && vecEnd)
+	{
+		if (pEntity && pEntity->pev->rendermode != kRenderNormal && pEntity->pev->rendermode != kRenderTransAlpha)
+		{
+			return "shot_glass";
+		}
+
+		if (pEntity && pEntity->Classify() != ENTCLASS_NONE && !pEntity->IsMachine())
+		{
+			chTextureType = CHAR_TEX_FLESH;
+		}
+		else
+		{
+			pTextureName = TRACE_TEXTURE(pEntity ? pEntity->edict() : CBaseEntity::World->edict(), vecSrc, vecEnd);
+
+			if (pTextureName)
+			{
+				pTextureName = g_MaterialSystem.StripTexturePrefix(pTextureName);
+				chTextureType = g_MaterialSystem.FindTextureType(pTextureName);
+			}
+		}
+
+		switch (chTextureType)
+		{
+		case CHAR_TEX_METAL:
+		case CHAR_TEX_VENT:
+			return "shot_metal";
+
+		case CHAR_TEX_WOOD:
+			return "shot_wood";
+
+		case CHAR_TEX_GLASS:
+			return "shot_glass";
+
+		case CHAR_TEX_CONCRETE:
+		case CHAR_TEX_DIRT:
+		case CHAR_TEX_TILE:
+		case CHAR_TEX_COMPUTER:
+			return "shot";
+		}
+	}
+
+	if (!pEntity)
+	{
+		return "shot";
+	}
+
+	return pEntity->DamageDecal(bitsDamageType);
+}
+
+void DecalGunshot(TraceResult* pTrace, int iBulletType, Vector vecSrc, Vector vecEnd)
+{
+	// Is the entity valid
+	if (!UTIL_IsValidEntity(pTrace->pHit))
+		return;
+
+	if (VARS(pTrace->pHit)->solid == SOLID_BSP || VARS(pTrace->pHit)->movetype == MOVETYPE_PUSHSTEP)
+	{
+		CBaseEntity* pEntity = NULL;
+		// Decal the wall with a gunshot
+		if (!FNullEnt(pTrace->pHit))
+			pEntity = CBaseEntity::Instance(pTrace->pHit);
+
+		switch (iBulletType)
+		{
+		case BULLET_PLAYER_9MM:
+		case BULLET_MONSTER_9MM:
+		case BULLET_PLAYER_MP5:
+		case BULLET_MONSTER_MP5:
+		case BULLET_PLAYER_BUCKSHOT:
+		case BULLET_PLAYER_357:
+		default:
+			// smoke and decal
+			UTIL_CustomDecal(pTrace, DamageDecal(pEntity, DMG_BULLET, vecSrc, vecEnd));
+			break;
+		case BULLET_MONSTER_12MM:
+			// smoke and decal
+			UTIL_CustomDecal(pTrace, DamageDecal(pEntity, DMG_BULLET, vecSrc, vecEnd));
+			break;
+		case BULLET_PLAYER_CROWBAR:
+			// wall decal
+			UTIL_CustomDecal(pTrace, DamageDecal(pEntity, DMG_BULLET, vecSrc, vecEnd));
+			break;
+		}
+	}
+}
+#else
 int DamageDecal(CBaseEntity* pEntity, int bitsDamageType)
 {
 	if (!pEntity)
@@ -104,6 +197,7 @@ void DecalGunshot(TraceResult* pTrace, int iBulletType)
 		}
 	}
 }
+#endif
 
 void EjectBrass(const Vector& vecOrigin, const Vector& vecVelocity, float rotation, int model, int soundtype)
 {

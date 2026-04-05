@@ -2352,3 +2352,501 @@ void CWarpBall::BallThink()
 		m_flLastTime = gpGlobals->time;
 	}
 }
+
+#define SF_DYNLIGHT_STARTON 1
+#define SF_DYNLIGHT_NOPVS 2
+
+class CDynamicLight : public CPointEntity
+{
+	DECLARE_CLASS(CDynamicLight, CPointEntity);
+	DECLARE_DATAMAP();
+
+public:
+	void Spawn() override;
+	void Precache() override;
+	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
+
+	void LightThink();
+};
+
+LINK_ENTITY_TO_CLASS(env_elight, CDynamicLight);
+LINK_ENTITY_TO_CLASS(env_dlight, CDynamicLight);
+LINK_ENTITY_TO_CLASS(env_spotlight, CDynamicLight);
+
+BEGIN_DATAMAP(CDynamicLight)
+DEFINE_FUNCTION(LightThink),
+END_DATAMAP();
+
+void CDynamicLight::Spawn()
+{
+	pev->solid = SOLID_NOT;
+	pev->movetype = MOVETYPE_NONE;
+
+	if (FStringNull(pev->targetname) && ClassnameIs("env_elight"))
+	{
+		UTIL_Remove(this);
+		return;
+	}
+
+	if (FStringNull(pev->targetname))
+		pev->spawnflags |= SF_DYNLIGHT_STARTON;
+
+	if (!(pev->spawnflags & SF_DYNLIGHT_STARTON))
+		pev->effects |= EF_NODRAW;
+
+	if (ClassnameIs("env_elight"))
+		pev->effects |= FL_ELIGHT; // entity light
+
+	if (ClassnameIs("env_dlight"))
+		pev->effects |= FL_DLIGHT; // dynamic light
+
+	if (ClassnameIs("env_spotlight"))
+		pev->effects = FL_SPOTLIGHT;
+
+	if (ClassnameIs("env_elight") && !FStringNull(pev->target))
+	{
+		CBaseEntity* pEntity = UTIL_FindEntityByTargetname(nullptr, STRING(pev->target)); 
+		edict_t* pentFind = pEntity->edict();
+		pev->aiment = pentFind;
+		pev->skin = pev->impulse; // Attachment point;
+	}
+
+	Precache();
+	SetModel("sprites/null.spr"); // should be visible to send to client
+	SetSize(g_vecZero, g_vecZero);
+}
+
+void CDynamicLight::Precache()
+{
+	PrecacheModel("sprites/null.spr");
+}
+
+void CDynamicLight::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
+{
+	if (useType == USE_ON)
+		pev->effects &= ~EF_NODRAW;
+	else if (useType == USE_OFF)
+		pev->effects |= EF_NODRAW;
+	else if (useType == USE_TOGGLE)
+	{
+		if (pev->effects & EF_NODRAW)
+			pev->effects &= ~EF_NODRAW;
+		else
+			pev->effects |= EF_NODRAW;
+	}
+
+	if (!(pev->effects & EF_NODRAW))
+	{
+		if (ClassnameIs("env_elight") && !FStringNull(pev->target))
+		{
+			CBaseEntity* pEntity = UTIL_FindEntityByTargetname(nullptr, STRING(pev->target));
+			edict_t* pentFind = pEntity->edict();
+			if (ENTINDEX(pentFind))
+			{
+				pev->aiment = pentFind;
+				pev->skin = pev->impulse; // Attachment point;
+			}
+			else
+			{
+				SetThink(&CDynamicLight::LightThink);
+				pev->nextthink = gpGlobals->time + 0.5f;
+			}
+		}
+	}
+}
+
+void CDynamicLight::LightThink()
+{
+	CBaseEntity* pEntity = UTIL_FindEntityByTargetname(nullptr, STRING(pev->target));
+	edict_t* pentFind = pEntity->edict();
+
+	if (!ENTINDEX(pentFind))
+	{
+		SetThink(&CDynamicLight::LightThink);
+		pev->nextthink = gpGlobals->time + 0.5f;
+	}
+	else
+	{
+		pev->aiment = pentFind;
+		pev->skin = pev->impulse; // Attachment point;
+	}
+}
+
+// =================================
+// buz: 3d sky info messages
+//
+// envpos_sky: sets view origin in 3d sky
+// envpos_world: sets view origin in world
+// =================================
+extern int gmsgSkyMark_Sky;
+extern int gmsgSkyMark_World;
+
+class CEnvPos_Sky : public CPointEntity
+{
+	DECLARE_CLASS(CEnvPos_Sky, CPointEntity);
+	DECLARE_DATAMAP();
+
+public:
+	void Spawn() override;
+	void SendInitMessage(CBasePlayer* player) override;
+	bool KeyValue(KeyValueData* pkvd) override;
+
+	int ObjectCaps() override { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
+
+	int m_iStartDist;
+	int m_iEndDist;
+	bool m_bDontAffectSky;
+};
+
+LINK_ENTITY_TO_CLASS(envpos_sky, CEnvPos_Sky);
+
+BEGIN_DATAMAP(CEnvPos_Sky)
+DEFINE_FIELD(m_iStartDist, FIELD_INTEGER),
+	DEFINE_FIELD(m_iEndDist, FIELD_INTEGER),
+	DEFINE_FIELD(m_bDontAffectSky, FIELD_BOOLEAN),
+	END_DATAMAP();
+
+void CEnvPos_Sky::Spawn()
+{
+	pev->solid = SOLID_NOT;
+	pev->movetype = MOVETYPE_NONE;
+	pev->effects |= EF_NODRAW;
+}
+
+bool CEnvPos_Sky::KeyValue(KeyValueData* pkvd)
+{
+	if (FStrEq("enddist", pkvd->szKeyName))
+	{
+		m_iEndDist = atoi(pkvd->szValue);
+		return true;
+	}
+	else if (FStrEq("startdist", pkvd->szKeyName))
+	{
+		m_iStartDist = atoi(pkvd->szValue);
+		return true;
+	}
+	else if (FStrEq("affectsky", pkvd->szKeyName))
+	{
+		m_bDontAffectSky = atoi(pkvd->szValue) != 0;
+		return true;
+	}
+
+	return CPointEntity::KeyValue(pkvd);
+}
+
+void CEnvPos_Sky::SendInitMessage(CBasePlayer* player)
+{
+	MESSAGE_BEGIN(MSG_ONE, gmsgSkyMark_Sky, nullptr, player);
+	WRITE_COORD(pev->origin.x);
+	WRITE_COORD(pev->origin.y);
+	WRITE_COORD(pev->origin.z);
+	WRITE_SHORT(m_iEndDist);
+	WRITE_SHORT(m_iStartDist);
+	WRITE_BYTE(pev->rendercolor.x);
+	WRITE_BYTE(pev->rendercolor.y);
+	WRITE_BYTE(pev->rendercolor.z);
+	WRITE_SHORT(m_bDontAffectSky);
+	MESSAGE_END();
+}
+
+class CEnvPos_World : public CPointEntity
+{
+	DECLARE_CLASS(CEnvPos_World, CPointEntity);
+	DECLARE_DATAMAP();
+
+public:
+	void Spawn() override
+	{
+		pev->solid = SOLID_NOT;
+		pev->movetype = MOVETYPE_NONE;
+		pev->effects |= EF_NODRAW;
+	}
+
+	void SendInitMessage(CBasePlayer* player)
+	{
+		MESSAGE_BEGIN(MSG_ONE, gmsgSkyMark_World, nullptr, player);
+		WRITE_COORD(pev->origin.x);
+		WRITE_COORD(pev->origin.y);
+		WRITE_COORD(pev->origin.z);
+		WRITE_COORD(pev->health);
+		MESSAGE_END();
+	}
+};
+
+LINK_ENTITY_TO_CLASS(envpos_world, CEnvPos_World);
+
+BEGIN_DATAMAP(CEnvPos_World)
+END_DATAMAP();
+
+/*
+====================
+stristr
+====================
+*/
+char* stristr(const char* string, const char* string2)
+{
+	int c, len;
+	c = tolower(*string2);
+	len = strlen(string2);
+
+	while (string)
+	{
+		for (; *string && tolower(*string) != c; string++)
+			;
+		if (*string)
+		{
+			if (strnicmp(string, string2, len) == 0)
+				break;
+			string++;
+		}
+		else
+		{
+			return nullptr;
+		}
+	}
+	return (char*)string;
+}
+
+//===============================================
+// Custom Decal
+//===============================================
+
+#define MAX_PATH_LENGTH 32
+#define SF_DECAL_WAITTRIGGER 1
+
+extern int gmsgCreateDecal;
+
+class CEnvDecal : public CPointEntity
+{
+	DECLARE_CLASS(CEnvDecal, CPointEntity);
+	DECLARE_DATAMAP();
+
+public:
+	void Spawn() override;
+	bool KeyValue(KeyValueData* pkvd) override;
+	void SendInitMessage(CBasePlayer* player) override;
+	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
+
+	bool m_bActive;
+	Vector m_vImpactNormal;
+	Vector m_vImpactPosition;
+	char m_szDecalName[MAX_PATH_LENGTH];
+	char m_szDecalOrigName[MAX_PATH_LENGTH];
+};
+
+LINK_ENTITY_TO_CLASS(env_decal, CEnvDecal);
+
+BEGIN_DATAMAP(CEnvDecal)
+DEFINE_FIELD(m_bActive, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_vImpactPosition, FIELD_VECTOR),
+	DEFINE_FIELD(m_vImpactNormal, FIELD_VECTOR),
+	DEFINE_ARRAY(m_szDecalName, FIELD_CHARACTER, MAX_PATH_LENGTH),	END_DATAMAP();
+
+void CEnvDecal::Spawn()
+{
+	TraceResult tr;
+
+	pev->solid = SOLID_NOT;
+	pev->movetype = MOVETYPE_NONE;
+	pev->effects = EF_NODRAW;
+
+	if (FStringNull(pev->targetname))
+		return;
+
+	m_szDecalName[0] = '\0';
+	if (!FStringNull(pev->message))
+	{
+		strncpy(m_szDecalName, STRING(pev->message), MAX_PATH_LENGTH - 1);
+		m_szDecalName[MAX_PATH_LENGTH - 1] = '\0';
+	}
+
+	if (strlen(m_szDecalName) == 0)
+	{
+		UTIL_Remove(this);
+		return;
+	}
+
+	// Z AXIS
+	UTIL_TraceLine(pev->origin + Vector(0, 0, 10), pev->origin + Vector(0, 0, -10), ignore_monsters, edict(), &tr);
+
+	if (tr.flFraction == 1.0f)
+		UTIL_TraceLine(pev->origin + Vector(0, 0, -10), pev->origin + Vector(0, 0, 10), ignore_monsters, edict(), &tr);
+
+	// Y AXIS
+	if (tr.flFraction == 1.0f)
+		UTIL_TraceLine(pev->origin + Vector(0, -10, 0), pev->origin + Vector(0, 10, 0), ignore_monsters, edict(), &tr);
+
+	if (tr.flFraction == 1.0f)
+		UTIL_TraceLine(pev->origin + Vector(0, 10, 0), pev->origin + Vector(0, -10, 0), ignore_monsters, edict(), &tr);
+
+	// X AXIS
+	if (tr.flFraction == 1.0f)
+		UTIL_TraceLine(pev->origin + Vector(10, 0, 0), pev->origin + Vector(-10, 0, 0), ignore_monsters, edict(), &tr);
+
+	if (tr.flFraction == 1.0f)
+		UTIL_TraceLine(pev->origin + Vector(-10, 0, 0), pev->origin + Vector(10, 0, 0), ignore_monsters, edict(), &tr);
+
+	if (tr.flFraction == 1.0f)
+	{
+		UTIL_Remove(this);
+		return;
+	}
+
+	m_vImpactPosition = tr.vecEndPos;
+	m_vImpactNormal = tr.vecPlaneNormal;
+}
+
+void CEnvDecal::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
+{
+	m_bActive = true;
+	SendInitMessage(nullptr);
+}
+
+void CEnvDecal::SendInitMessage(CBasePlayer* player)
+{
+	if (!m_bActive)
+		return;
+
+	if (!player)
+		MESSAGE_BEGIN(MSG_ALL, gmsgCreateDecal, nullptr);
+	else
+		MESSAGE_BEGIN(MSG_ONE, gmsgCreateDecal, nullptr, player);
+
+	WRITE_COORD(m_vImpactPosition.x);
+	WRITE_COORD(m_vImpactPosition.y);
+	WRITE_COORD(m_vImpactPosition.z);
+	WRITE_COORD(m_vImpactNormal.x);
+	WRITE_COORD(m_vImpactNormal.y);
+	WRITE_COORD(m_vImpactNormal.z);
+	WRITE_BYTE(1); // 1 en lugar de TRUE para indicar activo en la red
+	WRITE_STRING(m_szDecalName);
+	MESSAGE_END();
+}
+
+bool CEnvDecal::KeyValue(KeyValueData* pkvd)
+{
+	if (FStrEq("texture", pkvd->szKeyName))
+	{
+		strncpy(m_szDecalOrigName, pkvd->szValue, MAX_PATH_LENGTH - 1);
+		m_szDecalOrigName[MAX_PATH_LENGTH - 1] = '\0';
+		return true;
+	}
+
+	return CPointEntity::KeyValue(pkvd);
+}
+
+//===============================================
+// Particle System
+//===============================================
+
+#define SF_PARTICLE_STARTON 1
+#define SF_PARTICLE_KILLFIRE 2
+
+extern int gmsgCreateSystem;
+
+class CEnvParticle : public CPointEntity
+{
+	DECLARE_CLASS(CEnvParticle, CPointEntity);
+	DECLARE_DATAMAP();
+
+public:
+	void Spawn() override;
+	bool KeyValue(KeyValueData* pkvd) override;
+	void SendInitMessage(CBasePlayer* player) override;
+	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
+	void ParticleThink();
+
+	bool m_bActive;
+	bool m_bSent;
+};
+
+LINK_ENTITY_TO_CLASS(env_particle_system, CEnvParticle);
+
+BEGIN_DATAMAP(CEnvParticle)
+DEFINE_FIELD(m_bActive, FIELD_BOOLEAN),
+	DEFINE_FUNCTION(ParticleThink),
+	END_DATAMAP();
+
+void CEnvParticle::Spawn()
+{
+	pev->solid = SOLID_NOT;
+	pev->movetype = MOVETYPE_NONE;
+	pev->effects = EF_NODRAW;
+
+	if (FStringNull(pev->targetname) || (pev->spawnflags & SF_PARTICLE_STARTON))
+		m_bActive = true;
+}
+
+bool CEnvParticle::KeyValue(KeyValueData* pkvd)
+{
+	return CPointEntity::KeyValue(pkvd);
+}
+
+void CEnvParticle::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
+{
+	switch (useType)
+	{
+	case USE_OFF:
+		m_bActive = false;
+		break;
+	case USE_ON:
+		m_bActive = true;
+		break;
+	default:
+		m_bActive = !m_bActive;
+		break;
+	}
+
+	m_bSent = false;
+	SendInitMessage(nullptr);
+}
+
+void CEnvParticle::SendInitMessage(CBasePlayer* player)
+{
+	if (m_bActive && m_bSent)
+		return;
+
+	// Use think function, otherwise it isn't received
+	SetThink(&CEnvParticle::ParticleThink);
+	pev->nextthink = gpGlobals->time + 0.01f;
+}
+
+void CEnvParticle::ParticleThink()
+{
+	if (!m_bActive)
+	{
+		MESSAGE_BEGIN(MSG_ALL, gmsgCreateSystem, nullptr);
+		WRITE_COORD(0);
+		WRITE_COORD(0);
+		WRITE_COORD(0);
+		WRITE_COORD(0);
+		WRITE_COORD(0);
+		WRITE_COORD(0);
+		WRITE_BYTE(2);
+		WRITE_STRING("");
+		WRITE_LONG(this->entindex());
+		MESSAGE_END();
+	}
+	else
+	{
+		Vector vForward;
+		g_engfuncs.pfnAngleVectors(pev->angles, vForward, nullptr, nullptr);
+
+		MESSAGE_BEGIN(MSG_ALL, gmsgCreateSystem, nullptr);
+		WRITE_COORD(pev->origin.x); // system origin
+		WRITE_COORD(pev->origin.y);
+		WRITE_COORD(pev->origin.z);
+		WRITE_COORD(vForward.x); // system angles
+		WRITE_COORD(vForward.y);
+		WRITE_COORD(vForward.z);
+		WRITE_BYTE(pev->frags);				// definition = 0; cluster = 1;
+		WRITE_STRING(STRING(pev->message)); // path to definitions file
+		WRITE_LONG(this->entindex());
+		MESSAGE_END();
+	}
+
+	m_bSent = true;
+
+	if (m_bActive && (pev->spawnflags & SF_PARTICLE_KILLFIRE))
+		UTIL_Remove(this);
+}

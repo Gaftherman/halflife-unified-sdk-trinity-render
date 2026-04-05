@@ -727,6 +727,18 @@ bool CBreakable::IsBreakable()
 	return m_Material != matUnbreakableGlass;
 }
 
+#if defined(TRINITY)
+const char* CBreakable::DamageDecal(int bitsDamageType)
+{
+	if (pev->rendermode == kRenderTransAlpha)
+		return 0;
+
+	if (pev->rendermode != kRenderNormal)
+		return "shot_glass";
+
+	return "shot";
+}
+#else
 int CBreakable::DamageDecal(int bitsDamageType)
 {
 	if (m_Material == matGlass)
@@ -737,6 +749,7 @@ int CBreakable::DamageDecal(int bitsDamageType)
 
 	return CBaseEntity::DamageDecal(bitsDamageType);
 }
+#endif
 
 class CPushable : public CBreakable
 {
@@ -765,7 +778,11 @@ public:
 	// breakables use an overridden takedamage
 	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 
+#if defined(TRINITY)
+	const char* DamageDecal(int bitsDamageType) override;
+#else
 	int DamageDecal(int bitsDamageType) override;
+#endif
 
 	static const char* m_soundNames[3];
 	int m_lastSound; // no need to save/restore, just keeps the same sound from playing twice in a row
@@ -961,6 +978,15 @@ bool CPushable::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float 
 	return true;
 }
 
+#if defined(TRINITY)
+const char* CPushable::DamageDecal(int bitsDamageType)
+{
+	if (FBitSet(pev->spawnflags, SF_PUSH_BREAKABLE))
+		return CBreakable::DamageDecal(bitsDamageType);
+
+	return CBaseEntity::DamageDecal(bitsDamageType);
+}
+#else
 int CPushable::DamageDecal(int bitsDamageType)
 {
 	if (FBitSet(pev->spawnflags, SF_PUSH_BREAKABLE))
@@ -968,3 +994,4 @@ int CPushable::DamageDecal(int bitsDamageType)
 
 	return CBaseEntity::DamageDecal(bitsDamageType);
 }
+#endif

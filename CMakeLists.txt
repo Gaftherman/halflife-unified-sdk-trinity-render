@@ -51,6 +51,10 @@ endif()
 
 option(HalfLife_LTO "Enable Link-Time Optimization" OFF)
 
+# --- NUEVO: Opción Booleana para habilitar TRINITY desde CMake GUI ---
+option(HalfLife_ENABLE_TRINITY "Activar las funciones exclusivas de TRINITY" ON)
+# ----------------------------------------------------------------------
+
 if(HalfLife_LTO)
 	check_ipo_supported()
 endif()
@@ -88,6 +92,12 @@ function(set_common_properties TARGET_NAME)
 		$<$<PLATFORM_ID:Linux, Darwin>:POSIX _POSIX LINUX _LINUX GNUC>
 		$<$<PLATFORM_ID:Darwin>:OSX _OSX>
 		UNIFIED_SDK_CONFIG="$<CONFIG>")
+
+	# --- NUEVO: Inyectar el #define TRINITY al código C++ si la opción está activada ---
+	if(HalfLife_ENABLE_TRINITY)
+		target_compile_definitions(${TARGET_NAME} PRIVATE TRINITY)
+	endif()
+	# -----------------------------------------------------------------------------------
 		
 	target_link_libraries(${TARGET_NAME} PRIVATE
 		Angelscript::angelscript
@@ -261,4 +271,3 @@ if (NOT ${HalfLife_HLDS_DIRECTORY} STREQUAL "")
 	configure_file(cmake/InstallToHLDS.cmake.in ${hldsInstallScriptFile} @ONLY)
 	install(SCRIPT ${hldsInstallScriptFile})
 endif()
-	

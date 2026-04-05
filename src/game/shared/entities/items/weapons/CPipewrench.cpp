@@ -105,7 +105,9 @@ void CPipewrench::SecondaryAttack()
 
 void CPipewrench::Smack()
 {
+#if !defined(TRINITY)
 	DecalGunshot(&m_trHit, BULLET_PLAYER_CROWBAR);
+#endif
 }
 
 void CPipewrench::SwingAgain()
@@ -291,6 +293,10 @@ bool CPipewrench::Swing(const bool bFirst)
 		}
 
 		m_pPlayer->m_iWeaponVolume = flVol * PIPEWRENCH_WALLHIT_VOLUME;
+
+#if defined(TRINITY)
+		DecalGunshot(&m_trHit, BULLET_PLAYER_CROWBAR, vecSrc, vecEnd);
+#endif
 
 		SetThink(&CPipewrench::Smack);
 		pev->nextthink = gpGlobals->time + 0.2;

@@ -115,6 +115,15 @@ struct edict_t;
 #define EF_NIGHTVISION 256	// player nightvision
 #define EF_SNIPERLASER 512	// sniper laser effect
 #define EF_FIBERCAMERA 1024 // fiber camera
+#if defined(TRINITY)
+#define FL_ELIGHT 2048
+#define FL_DLIGHT 4096
+#define FL_SPOTLIGHT 8192
+#define FL_WATERSHADER 16384
+#define FL_MIRROR 32768
+#define FL_NOSHADOW 65536
+#define FL_NOMODEL 131072
+#endif
 
 
 // entity flags

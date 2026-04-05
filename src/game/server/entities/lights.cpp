@@ -18,6 +18,10 @@
  */
 
 #include "cbase.h"
+#if defined(TRINITY)
+#include "player.h"
+#include "UserMessages.h"
+#endif
 
 class CLight : public CPointEntity
 {
@@ -28,17 +32,26 @@ public:
 	bool KeyValue(KeyValueData* pkvd) override;
 	void Spawn() override;
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
+#if defined(TRINITY)
+	void SendInitMessage(CBasePlayer* player) override;
+#endif
 
 private:
 	int m_iStyle;
 	string_t m_iszPattern;
+#if defined(TRINITY)
+	bool m_bAlreadySent;
+#endif
 };
 
 LINK_ENTITY_TO_CLASS(light, CLight);
 
 BEGIN_DATAMAP(CLight)
-DEFINE_FIELD(m_iStyle, FIELD_INTEGER),
+	DEFINE_FIELD(m_iStyle, FIELD_INTEGER),
 	DEFINE_FIELD(m_iszPattern, FIELD_STRING),
+#if defined(TRINITY)
+	DEFINE_FIELD(m_bAlreadySent, FIELD_BOOLEAN),
+#endif
 	END_DATAMAP();
 
 bool CLight::KeyValue(KeyValueData* pkvd)
@@ -65,20 +78,36 @@ bool CLight::KeyValue(KeyValueData* pkvd)
 void CLight::Spawn()
 {
 	if (FStringNull(pev->targetname))
-	{ // inert light
+	{
 		REMOVE_ENTITY(edict());
 		return;
 	}
 
 	if (m_iStyle >= 32)
 	{
-		//		CHANGE_METHOD(edict(), em_use, light_use);
+		const char* pPattern = nullptr;
+
 		if (FBitSet(pev->spawnflags, SF_LIGHT_START_OFF))
-			LIGHT_STYLE(m_iStyle, "a");
+		{
+			pPattern = "a";
+		}
 		else if (!FStringNull(m_iszPattern))
-			LIGHT_STYLE(m_iStyle, STRING(m_iszPattern));
+		{
+			pPattern = (char*)STRING(m_iszPattern);
+		}
 		else
-			LIGHT_STYLE(m_iStyle, "m");
+		{
+			pPattern = "m";
+		}
+
+		LIGHT_STYLE(m_iStyle, (char*)pPattern);
+
+#if defined(TRINITY)
+		MESSAGE_BEGIN(MSG_ALL, gmsgLightStyle, nullptr);
+		WRITE_BYTE(m_iStyle);
+		WRITE_STRING(pPattern);
+		MESSAGE_END();
+#endif
 	}
 }
 
@@ -89,21 +118,63 @@ void CLight::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType
 		if (!ShouldToggle(useType, !FBitSet(pev->spawnflags, SF_LIGHT_START_OFF)))
 			return;
 
+		const char* pPattern = nullptr;
+
 		if (FBitSet(pev->spawnflags, SF_LIGHT_START_OFF))
 		{
 			if (!FStringNull(m_iszPattern))
-				LIGHT_STYLE(m_iStyle, STRING(m_iszPattern));
+				pPattern = (char*)STRING(m_iszPattern);
 			else
-				LIGHT_STYLE(m_iStyle, "m");
+				pPattern = "m";
+
 			ClearBits(pev->spawnflags, SF_LIGHT_START_OFF);
 		}
 		else
 		{
-			LIGHT_STYLE(m_iStyle, "a");
+			pPattern = "a";
 			SetBits(pev->spawnflags, SF_LIGHT_START_OFF);
 		}
+
+		LIGHT_STYLE(m_iStyle, (char*)pPattern);
+
+#if defined(TRINITY)
+		MESSAGE_BEGIN(MSG_ALL, gmsgLightStyle, nullptr);
+		WRITE_BYTE(m_iStyle);
+		WRITE_STRING(pPattern);
+		MESSAGE_END();
+#endif
 	}
 }
+
+#if defined(TRINITY)
+void CLight::SendInitMessage(CBasePlayer* player)
+{
+	if (m_iStyle >= 32)
+	{
+		const char* pPattern = nullptr;
+
+		if (FBitSet(pev->spawnflags, SF_LIGHT_START_OFF))
+		{
+			pPattern = "a";
+		}
+		else if (!FStringNull(m_iszPattern))
+		{
+			pPattern = (char*)STRING(m_iszPattern);
+		}
+		else
+		{
+			pPattern = "m";
+		}
+
+		MESSAGE_BEGIN(MSG_ALL, gmsgLightStyle, nullptr);
+		WRITE_BYTE(m_iStyle);
+		WRITE_STRING(pPattern);
+		MESSAGE_END();
+	}
+
+	m_bAlreadySent = true;
+}
+#endif
 
 /**
  *	@brief shut up spawn functions for new spotlights

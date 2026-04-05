@@ -21,6 +21,9 @@
 #include "cbase.h"
 #include "nodes.h"
 #include "doors.h"
+#if defined(TRINITY)
+#include "UserMessages.h"
+#endif
 
 void CPointEntity::Spawn()
 {
@@ -75,6 +78,12 @@ void CBaseEntity::SUB_Remove()
 		pev->health = 0;
 		Logger->debug("SUB_Remove called on entity \"{}\" ({}) with health > 0", STRING(pev->targetname), STRING(pev->classname));
 	}
+
+#if defined(TRINITY)
+	MESSAGE_BEGIN(MSG_ALL, gmsgFreeEnt);
+	WRITE_SHORT(entindex());
+	MESSAGE_END();
+#endif
 
 	REMOVE_ENTITY(edict());
 }

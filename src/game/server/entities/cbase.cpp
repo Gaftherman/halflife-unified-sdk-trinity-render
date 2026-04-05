@@ -858,6 +858,18 @@ bool CBaseEntity::ShouldToggle(USE_TYPE useType, bool currentState)
 	return true;
 }
 
+#if defined(TRINITY)
+const char* CBaseEntity::DamageDecal(int bitsDamageType)
+{
+	if (pev->rendermode == kRenderTransAlpha)
+		return 0;
+
+	if (pev->rendermode != kRenderNormal)
+		return "shot_glass";
+
+	return "shot";
+}
+#else
 int CBaseEntity::DamageDecal(int bitsDamageType)
 {
 	if (pev->rendermode == kRenderTransAlpha)
@@ -868,6 +880,7 @@ int CBaseEntity::DamageDecal(int bitsDamageType)
 
 	return DECAL_GUNSHOT1 + RANDOM_LONG(0, 4);
 }
+#endif
 
 CBaseEntity* CBaseEntity::Create(const char* szName, const Vector& vecOrigin, const Vector& vecAngles, CBaseEntity* owner, bool callSpawn)
 {

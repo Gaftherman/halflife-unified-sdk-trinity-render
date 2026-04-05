@@ -158,6 +158,10 @@ DEFINE_FIELD(m_SuitLightType, FIELD_INTEGER),
 	// DEFINE_ARRAY(m_rgAmmoLast, FIELD_INTEGER, MAX_AMMO_TYPES), // Don't need to restore
 	// DEFINE_FIELD(m_fOnTarget, FIELD_BOOLEAN), // Don't need to restore
 	// DEFINE_FIELD(m_nCustomSprayFrames, FIELD_INTEGER), // Don't need to restore
+
+#if defined(TRINITY)
+	DEFINE_FIELD(m_bUpdateEffects, FIELD_BOOLEAN),
+#endif
 	END_DATAMAP();
 
 void CBasePlayer::Pain()
@@ -1244,6 +1248,10 @@ void CBasePlayer::PlayerDeathThink()
 	m_iRespawnFrames = 0;
 
 	// Logger->debug("Respawn");
+
+#if defined(TRINITY)
+	m_bUpdateEffects = true;
+#endif
 
 	respawn(this, (m_afPhysicsFlags & PFLAG_OBSERVER) == 0); // don't copy a corpse if we're in deathcam.
 	pev->nextthink = -1;
@@ -2881,6 +2889,10 @@ void CBasePlayer::Precache()
 
 	m_iUpdateTime = 5; // won't update for 1/2 a second
 
+#if defined(TRINITY)
+	m_bUpdateEffects = true;
+#endif
+
 	if (gInitHUD)
 		m_fInitHUD = true;
 }
@@ -3894,6 +3906,15 @@ void CBasePlayer::UpdateClientData()
 		m_AutoWepSwitch = savedAutoWepSwitch;
 	}
 
+#if defined(TRINITY)
+	if (m_bUpdateEffects)
+	{
+		ClearEffects();
+		SendInitMessages();
+		m_bUpdateEffects = false;
+	}
+#endif
+
 	if (m_iHideHUD != m_iClientHideHUD)
 	{
 		MESSAGE_BEGIN(MSG_ONE, gmsgHideWeapon, nullptr, this);
@@ -4109,6 +4130,40 @@ void CBasePlayer::UpdateClientData()
 	// Handled anything that needs resetting
 	m_bRestored = false;
 }
+
+#if defined(TRINITY)
+void CBasePlayer ::ClearEffects(void)
+{
+	MESSAGE_BEGIN(MSG_ONE, gmsgSetFog, nullptr, this);
+	WRITE_SHORT(0);
+	WRITE_SHORT(0);
+	WRITE_SHORT(0);
+	WRITE_SHORT(0);
+	WRITE_SHORT(0);
+	MESSAGE_END();
+}
+
+void CBasePlayer ::SendInitMessages(void)
+{
+	edict_t* pEdict = g_engfuncs.pfnPEntityOfEntIndex(1);
+	CBaseEntity* pEntity;
+
+	if (!pEdict)
+		return;
+
+	for (int i = 1; i < gpGlobals->maxEntities; i++, pEdict++)
+	{
+		if (0 != pEdict->free) // Not in use
+			continue;
+
+		pEntity = CBaseEntity::Instance(pEdict);
+		if (!pEntity)
+			continue;
+
+		pEntity->SendInitMessage(this);
+	}
+}
+#endif
 
 void CBasePlayer::UpdateCTFHud()
 {

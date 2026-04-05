@@ -27,7 +27,6 @@
 #include "palette.h"
 #include "items/CBaseItem.h"
 #include "sound/MaterialSystem.h"
-
 class CBaseItem;
 class CRope;
 class CTFGoalFlag;
@@ -645,6 +644,12 @@ public:
 	void SendScoreInfoAll();
 
 	void ToggleCheat(Cheat cheat);
+
+#if defined(TRINITY)
+	bool m_bUpdateEffects;
+	void ClearEffects();
+	void SendInitMessages();
+#endif
 };
 
 inline void CBasePlayer::SetWeaponBit(int id)

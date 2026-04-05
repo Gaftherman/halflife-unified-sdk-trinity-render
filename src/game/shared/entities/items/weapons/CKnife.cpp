@@ -249,6 +249,10 @@ bool CKnife::Swing(const bool bFirst)
 
 		m_pPlayer->m_iWeaponVolume = flVol * KNIFE_WALLHIT_VOLUME;
 
+#if defined(TRINITY)
+		DecalGunshot(&m_trHit, BULLET_PLAYER_CROWBAR, vecSrc, vecEnd);
+#endif
+
 		SetThink(&CKnife::Smack);
 		pev->nextthink = gpGlobals->time + 0.2;
 #endif
@@ -268,7 +272,9 @@ void CKnife::SwingAgain()
 
 void CKnife::Smack()
 {
+#if !defined(TRINITY)
 	DecalGunshot(&m_trHit, BULLET_PLAYER_CROWBAR);
+#endif
 }
 
 bool CKnife::GetWeaponInfo(WeaponInfo& info)

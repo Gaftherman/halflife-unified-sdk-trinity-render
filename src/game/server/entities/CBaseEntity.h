@@ -219,6 +219,10 @@ public:
 	virtual int ObjectCaps() { return FCAP_ACROSS_TRANSITION; }
 	virtual void Activate() {}
 
+#if defined(TRINITY)
+	virtual void SendInitMessage(CBasePlayer* player) {};
+#endif
+
 	/**
 	 *	@brief Setup the object->object collision box (pev->mins / pev->maxs is the object->world collision box)
 	 */
@@ -323,7 +327,11 @@ public:
 	virtual float GetDelay() { return 0; }
 	virtual bool IsMoving() { return pev->velocity != g_vecZero; }
 	virtual void OverrideReset() {}
+#if defined(TRINITY)
+	virtual const char* DamageDecal(int bitsDamageType);
+#else
 	virtual int DamageDecal(int bitsDamageType);
+#endif
 	virtual bool OnControls(CBaseEntity* controller) { return false; }
 	virtual bool IsAlive() { return (pev->deadflag == DEAD_NO) && pev->health > 0; }
 	virtual bool IsBSPModel() { return pev->solid == SOLID_BSP || pev->movetype == MOVETYPE_PUSHSTEP; }

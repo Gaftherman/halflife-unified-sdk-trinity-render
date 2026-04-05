@@ -314,6 +314,7 @@ void CWorld::Precache()
 	// Setup light animation tables. 'a' is total darkness, 'z' is maxbright.
 	//
 
+#if defined(TRINITY)
 	// 0 normal
 	LIGHT_STYLE(0, "m");
 
@@ -354,7 +355,48 @@ void CWorld::Precache()
 	// this light only distorts the lightmap - no contribution
 	// is made to the brightness of affected surfaces
 	LIGHT_STYLE(12, "mmnnmmnnnmmnn");
+#else 
+	// 0 normal
+	LIGHT_STYLE(0, "m");
 
+	// 1 FLICKER (first variety)
+	LIGHT_STYLE(1, "m");
+
+	// 2 SLOW STRONG PULSE
+	LIGHT_STYLE(2, "m");
+
+	// 3 CANDLE (first variety)
+	LIGHT_STYLE(3, "m");
+
+	// 4 FAST STROBE
+	LIGHT_STYLE(4, "m");
+
+	// 5 GENTLE PULSE 1
+	LIGHT_STYLE(5, "m");
+
+	// 6 FLICKER (second variety)
+	LIGHT_STYLE(6, "m");
+
+	// 7 CANDLE (second variety)
+	LIGHT_STYLE(7, "m");
+
+	// 8 CANDLE (third variety)
+	LIGHT_STYLE(8, "m");
+
+	// 9 SLOW STROBE (fourth variety)
+	LIGHT_STYLE(9, "m");
+
+	// 10 FLUORESCENT FLICKER
+	LIGHT_STYLE(10, "m");
+
+	// 11 SLOW PULSE NOT FADE TO BLACK
+	LIGHT_STYLE(11, "m");
+
+	// 12 UNDERWATER LIGHT MUTATION
+	// this light only distorts the lightmap - no contribution
+	// is made to the brightness of affected surfaces
+	LIGHT_STYLE(12, "m");
+#endif
 	// styles 32-62 are assigned by the light program for switchable lights
 
 	// 63 testing

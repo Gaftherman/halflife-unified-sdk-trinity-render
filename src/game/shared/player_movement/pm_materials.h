@@ -15,6 +15,10 @@
 
 #pragma once
 
+#if defined(TRINITY)
+#define CBTEXTURENAMEMAX 13 // only load first n chars of name
+#endif
+
 #define CHAR_TEX_CONCRETE 'C' // texture types
 #define CHAR_TEX_METAL 'M'
 #define CHAR_TEX_DIRT 'D'

@@ -263,6 +263,9 @@ void CBaseDoor::Spawn()
 	}
 	else
 	{ // special contents
+#if defined(TRINITY)
+		pev->effects |= FL_WATERSHADER;
+#endif
 		pev->solid = SOLID_NOT;
 		SetBits(pev->spawnflags, SF_DOOR_SILENT); // water is silent for now
 	}

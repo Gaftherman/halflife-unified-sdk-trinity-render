@@ -83,7 +83,9 @@ void CCrowbar::PrimaryAttack()
 
 void CCrowbar::Smack()
 {
+#if !defined(TRINITY)
 	DecalGunshot(&m_trHit, BULLET_PLAYER_CROWBAR);
+#endif
 }
 
 void CCrowbar::SwingAgain()
@@ -253,6 +255,9 @@ bool CCrowbar::Swing(bool fFirst)
 			m_flNextPrimaryAttack = GetNextAttackDelay(0.25);
 		}
 
+#if defined(TRINITY)
+		DecalGunshot(&m_trHit, BULLET_PLAYER_CROWBAR, vecSrc, vecEnd);
+#endif
 		SetThink(&CCrowbar::Smack);
 		pev->nextthink = gpGlobals->time + 0.2;
 	}

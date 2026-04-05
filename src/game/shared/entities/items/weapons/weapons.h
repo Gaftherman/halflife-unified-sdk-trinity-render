@@ -556,10 +556,17 @@ void ClearMultiDamage();
 void ApplyMultiDamage(CBaseEntity* inflictor, CBaseEntity* attacker);
 void AddMultiDamage(CBaseEntity* inflictor, CBaseEntity* pEntity, float flDamage, int bitsDamageType);
 
+#if defined(TRINITY)
+void DecalGunshot(TraceResult* pTrace, int iBulletType, Vector vecSrc, Vector vecEnd);
+#else 
 void DecalGunshot(TraceResult* pTrace, int iBulletType);
+#endif
 void SpawnBlood(Vector vecSpot, int bloodColor, float flDamage);
+#if defined(TRINITY)
+const char* DamageDecal(CBaseEntity* pEntity, int bitsDamageType);
+#else 
 int DamageDecal(CBaseEntity* pEntity, int bitsDamageType);
-
+#endif
 /**
  *	@brief this entity is exploding, or otherwise needs to inflict damage upon entities within a certain range.
  *	only damage ents that can clearly be seen by the explosion!

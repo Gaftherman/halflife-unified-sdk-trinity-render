@@ -963,7 +963,29 @@ void UTIL_BloodStream(const Vector& origin, const Vector& direction, int color, 
 	if (g_Language == LANGUAGE_GERMAN && color == BLOOD_COLOR_RED)
 		color = 0;
 
-
+#if defined(TRINITY)
+	if (CVAR_GET_FLOAT("te_particles") >= 1)
+	{
+		if (color == BLOOD_COLOR_RED)
+			UTIL_Particle("blood_effects_cluster.txt", origin, direction, 1);
+		else
+			UTIL_Particle("blood_effects_cluster_alien.txt", origin, direction, 1);
+	}
+	else
+	{
+		MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, origin);
+		WRITE_BYTE(TE_BLOODSTREAM);
+		WRITE_COORD(origin.x);
+		WRITE_COORD(origin.y);
+		WRITE_COORD(origin.z);
+		WRITE_COORD(direction.x);
+		WRITE_COORD(direction.y);
+		WRITE_COORD(direction.z);
+		WRITE_BYTE(color);
+		WRITE_BYTE(std::min(amount, 255));
+		MESSAGE_END();
+	}
+#else
 	MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, origin);
 	WRITE_BYTE(TE_BLOODSTREAM);
 	WRITE_COORD(origin.x);
@@ -975,6 +997,8 @@ void UTIL_BloodStream(const Vector& origin, const Vector& direction, int color, 
 	WRITE_BYTE(color);
 	WRITE_BYTE(std::min(amount, 255));
 	MESSAGE_END();
+#endif
+	
 }
 
 void UTIL_BloodDrips(const Vector& origin, const Vector& direction, int color, int amount)
@@ -997,6 +1021,29 @@ void UTIL_BloodDrips(const Vector& origin, const Vector& direction, int color, i
 	if (amount > 255)
 		amount = 255;
 
+#if defined(TRINITY)
+	if (CVAR_GET_FLOAT("te_particles") >= 1)
+	{
+		if (color == BLOOD_COLOR_RED)
+			UTIL_Particle("blood_effects_cluster.txt", origin, direction, 1);
+		else
+			UTIL_Particle("blood_effects_cluster_alien.txt", origin, direction, 1);
+	}
+	else
+	{
+
+		MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, origin);
+		WRITE_BYTE(TE_BLOODSPRITE);
+		WRITE_COORD(origin.x); // pos
+		WRITE_COORD(origin.y);
+		WRITE_COORD(origin.z);
+		WRITE_SHORT(g_sModelIndexBloodSpray);		// initial sprite model
+		WRITE_SHORT(g_sModelIndexBloodDrop);		// droplet sprite models
+		WRITE_BYTE(color);							// color index into host_basepal
+		WRITE_BYTE(std::clamp(amount / 10, 3, 16)); // size
+		MESSAGE_END();
+	}
+#else 
 	MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, origin);
 	WRITE_BYTE(TE_BLOODSPRITE);
 	WRITE_COORD(origin.x); // pos
@@ -1007,6 +1054,7 @@ void UTIL_BloodDrips(const Vector& origin, const Vector& direction, int color, i
 	WRITE_BYTE(color);							// color index into host_basepal
 	WRITE_BYTE(std::clamp(amount / 10, 3, 16)); // size
 	MESSAGE_END();
+#endif
 }
 
 Vector UTIL_RandomBloodVector()
@@ -1023,6 +1071,22 @@ Vector UTIL_RandomBloodVector()
 
 void UTIL_BloodDecalTrace(TraceResult* pTrace, int bloodColor)
 {
+#if defined(TRINITY)
+	if (UTIL_ShouldShowBlood(bloodColor))
+	{
+		if (VARS(pTrace->pHit)->rendermode != kRenderTransAlpha)
+		{
+			if (bloodColor == BLOOD_COLOR_RED)
+			{
+				UTIL_CustomDecal(pTrace, "redblood");
+			}
+			else
+			{
+				UTIL_CustomDecal(pTrace, "yellowblood");
+			}
+		}
+	}
+#else 
 	if (UTIL_ShouldShowBlood(bloodColor))
 	{
 		if (bloodColor == BLOOD_COLOR_RED)
@@ -1030,6 +1094,8 @@ void UTIL_BloodDecalTrace(TraceResult* pTrace, int bloodColor)
 		else
 			UTIL_DecalTrace(pTrace, DECAL_YBLOOD1 + RANDOM_LONG(0, 5));
 	}
+#endif
+
 }
 
 
@@ -1499,3 +1565,51 @@ bool UTIL_IsMultiplayer()
 	// Can be null during weapon registration.
 	return g_pGameRules != nullptr && g_pGameRules->IsMultiplayer();
 }
+
+#if defined(TRINITY)
+void UTIL_CustomDecal(TraceResult* pTrace, const char* name, int persistent)
+{
+	if (pTrace->flFraction == 1.0)
+		return;
+
+	MESSAGE_BEGIN(MSG_ALL, gmsgCreateDecal, nullptr);
+	WRITE_COORD(pTrace->vecEndPos.x);
+	WRITE_COORD(pTrace->vecEndPos.y);
+	WRITE_COORD(pTrace->vecEndPos.z);
+	WRITE_COORD(pTrace->vecPlaneNormal.x);
+	WRITE_COORD(pTrace->vecPlaneNormal.y);
+	WRITE_COORD(pTrace->vecPlaneNormal.z);
+	WRITE_BYTE(persistent);
+	WRITE_STRING(name);
+	MESSAGE_END();
+}
+
+void UTIL_StudioDecal(const Vector& normal, const Vector& position, const char* name, int entindex)
+{
+	MESSAGE_BEGIN(MSG_BROADCAST, gmsgStudioDecal);
+	WRITE_COORD(position.x);
+	WRITE_COORD(position.y);
+	WRITE_COORD(position.z);
+	WRITE_COORD(normal.x);
+	WRITE_COORD(normal.y);
+	WRITE_COORD(normal.z);
+	WRITE_SHORT(entindex);
+	WRITE_STRING(name);
+	MESSAGE_END();
+}
+
+void UTIL_Particle(const char* szName, const Vector& vecOrigin, const Vector& vDirection, int iType)
+{
+	MESSAGE_BEGIN(MSG_ALL, gmsgCreateSystem, NULL);
+	WRITE_COORD(vecOrigin.x);
+	WRITE_COORD(vecOrigin.y);
+	WRITE_COORD(vecOrigin.z);
+	WRITE_COORD(vDirection.x);
+	WRITE_COORD(vDirection.y);
+	WRITE_COORD(vDirection.z);
+	WRITE_BYTE(iType);
+	WRITE_STRING(szName);
+	WRITE_LONG(0);
+	MESSAGE_END();
+}
+#endif

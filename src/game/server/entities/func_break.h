@@ -69,7 +69,11 @@ public:
 
 	bool IsBreakable();
 
+#if defined(TRINITY)
+	const char* DamageDecal(int bitsDamageType) override;
+#else
 	int DamageDecal(int bitsDamageType) override;
+#endif
 
 	void Die();
 	int ObjectCaps() override { return (CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }

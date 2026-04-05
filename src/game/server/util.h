@@ -144,6 +144,12 @@ void UTIL_MakeVectors(const Vector& vecAngles);
 int UTIL_MonstersInSphere(CBaseEntity** pList, int listMax, const Vector& center, float radius);
 int UTIL_EntitiesInBox(CBaseEntity** pList, int listMax, const Vector& mins, const Vector& maxs, int flagMask);
 
+#if defined(TRINITY)
+void UTIL_Particle(const char* szName, const Vector& vecOrigin, const Vector& vDirection, int iType);
+void UTIL_CustomDecal(TraceResult* pTrace, const char* name, int persistent = 0);
+void UTIL_StudioDecal(const Vector& normal, const Vector& position, const char* name, int entindex);
+#endif
+
 void UTIL_MakeAimVectors(const Vector& vecAngles); // like MakeVectors, but assumes pitch isn't inverted
 void UTIL_MakeInvVectors(const Vector& vec, globalvars_t* pgv);
 
