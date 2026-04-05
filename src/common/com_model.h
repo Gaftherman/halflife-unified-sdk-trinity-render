@@ -63,6 +63,57 @@ enum synctype_t
 
 #endif
 
+#if defined(TRINITY)
+enum spriteframetype_t
+{
+	SPR_SINGLE = 0,
+	SPR_GROUP
+};
+
+#define SPR_VP_PARALLEL_UPRIGHT 0
+#define SPR_FACING_UPRIGHT 1
+#define SPR_VP_PARALLEL 2
+#define SPR_ORIENTED 3
+#define SPR_VP_PARALLEL_ORIENTED 4
+
+#define SPR_NORMAL 0
+#define SPR_ADDITIVE 1
+#define SPR_INDEXALPHA 2
+#define SPR_ALPHTEST 3
+
+struct mspriteframe_t
+{
+	int width;
+	int height;
+	float up, down, left, right;
+	int gl_texturenum;
+};
+
+struct mspritegroup_t
+{
+	int numframes;
+	float* intervals;
+	mspriteframe_t* frames[1];
+};
+
+struct mspriteframedesc_t
+{
+	spriteframetype_t type;
+	mspriteframe_t* frameptr;
+};
+
+struct msprite_t
+{
+	short type;
+	short texFormat;
+	int maxwidth;
+	int maxheight;
+	int numframes;
+	byte unknown_data[12];
+	mspriteframedesc_t frames[1];
+};
+#endif
+
 struct dmodel_t
 {
 	Vector mins, maxs;
@@ -97,6 +148,10 @@ struct texture_t
 {
 	char name[16];
 	unsigned width, height;
+#if defined(TRINITY)
+	int gl_texturenum;
+	msurface_t* texturechain;
+#endif
 	int anim_total;				 // total tenths in sequence ( 0 = no)
 	int anim_min, anim_max;		 // time for this frame min <=time< max
 	texture_t* anim_next;		 // in the animation sequence
@@ -115,13 +170,30 @@ struct mtexinfo_t
 	int flags; // sky or slime, no lightmap or 256 subdivision
 };
 
+#if defined(TRINITY)
+#define VERTEXSIZE 7
+
+struct glpoly_t
+{
+	glpoly_t* next;
+	glpoly_t* chain;
+	int numverts;
+	int flags;
+	float verts[4][VERTEXSIZE];
+};
+#endif
+
 struct mnode_t
 {
 	// common with leaf
 	int contents; // 0, to differentiate from leafs
 	int visframe; // node needs to be traversed if current
 
+   #if defined(TRINITY)
+	float minmaxs[6]; // for bounding box culling
+	#else
 	short minmaxs[6]; // for bounding box culling
+	#endif
 
 	mnode_t* parent;
 
@@ -153,7 +225,11 @@ struct mleaf_t
 	int contents; // wil be a negative contents number
 	int visframe; // node needs to be traversed if current
 
+   #if defined(TRINITY)
+	float minmaxs[6]; // for bounding box culling
+	#else
 	short minmaxs[6]; // for bounding box culling
+	#endif
 
 	mnode_t* parent;
 
@@ -187,12 +263,23 @@ struct msurface_t
 	short texturemins[2]; // smallest s/t position on the surface.
 	short extents[2];	  // ?? s/t texture size, 1..256 for all non-sky surfaces
 
+#if defined(TRINITY)
+	int light_s, light_t;
+	glpoly_t* polys;
+	msurface_t* texturechain;
+#endif
+
 	mtexinfo_t* texinfo;
 
 	// lighting info
 	byte styles[MAXLIGHTMAPS]; // index into d_lightstylevalue[] for animated lights
 							   // no one surface can be effected by more than 4
 							   // animated lights.
+#if defined(TRINITY)
+	int lightmaptexturenum;
+	int cached_light[MAXLIGHTMAPS];
+	qboolean cached_dlight;
+#endif
 	color24* samples;
 
 	decal_t* pdecals;
@@ -349,3 +436,7 @@ struct player_info_t
 	char hashedcdkey[16];
 	uint64 m_nSteamID;
 };
+
+#if defined(TRINITY)
+extern mvertex_t* globalVertexTable;
+#endif
