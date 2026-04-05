@@ -39,6 +39,7 @@ target_sources(server PRIVATE
 	game.cpp
 	game.h
 	h_export.cpp
+	MapExporter.cpp
 	MapState.h
 	nodes.cpp
 	nodes.h

@@ -44,6 +44,10 @@
 
 unsigned int g_ulFrameCount;
 
+#if defined(TRINITY)
+extern void ExportDetails(void);
+#endif
+
 /**
  *	@brief called when a player connects to a server
  */
@@ -573,9 +577,11 @@ void SV_CreateClientCommands()
 	g_ClientCommands.Create("say", [](CBasePlayer* player, const auto& args)
 		{ Host_Say(player, false); });
 
-
 	g_ClientCommands.Create("say_team", [](CBasePlayer* player, const auto& args)
 		{ Host_Say(player, true); });
+
+	g_ClientCommands.Create("te_exportdetail", [](CBasePlayer* player, const auto& args)
+		{ ExportDetails(); });
 
 	g_ClientCommands.Create("fullupdate", [](CBasePlayer* player, const auto& args)
 		{ player->ForceClientDllUpdate(); });
