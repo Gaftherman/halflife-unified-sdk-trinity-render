@@ -141,10 +141,26 @@ target_sources(client PRIVATE
 
 	rendering/GameStudioModelRenderer.cpp
 	rendering/GameStudioModelRenderer.h
+   rendering/bsprenderer.cpp
+	rendering/bsprenderer.h
+	rendering/frustum.cpp
+	rendering/frustum.h
+	rendering/mirrormanager.cpp
+	rendering/mirrormanager.h
+	rendering/particle_engine.cpp
+	rendering/particle_engine.h
+	rendering/propmanager.cpp
+	rendering/propmanager.h
+	rendering/rendererdefs.cpp
+	rendering/rendererdefs.h
 	rendering/StudioModelRenderer.cpp
 	rendering/StudioModelRenderer.h
+   rendering/textureloader.cpp
+	rendering/textureloader.h
 	rendering/tri.cpp
 	rendering/tri.h
+	rendering/watershader.cpp
+	rendering/watershader.h
 	
 	sound/ClientSoundReplacementSystem.h
 	sound/DummySoundSystem.h

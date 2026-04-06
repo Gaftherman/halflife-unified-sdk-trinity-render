@@ -1,12 +1,13 @@
-#pragma once
+#ifndef TRI_H
+#define TRI_H
 
 #include "particleman.h"
 
-inline bool g_RenderFog = false;
-inline int g_FogSkybox = 0;
-inline Vector g_FogColor = vec3_origin;
-inline float g_FogDensity = 0;
-inline float g_FogStartDistance = 1000;
-inline float g_FogStopDistance = 3000;
+extern IParticleMan *g_pParticleMan;
 
-void RenderFog();
+
+
+
+
+
+#endif //TRI_H
